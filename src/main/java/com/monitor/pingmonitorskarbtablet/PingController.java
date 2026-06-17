@@ -1,0 +1,22 @@
+package com.monitor.pingmonitorskarbtablet;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+
+@RestController
+public class PingController {
+    private static final ConcurrentHashMap<String, Instant> sessions = new ConcurrentHashMap<>();
+
+    @GetMapping("/ping") //http://localhost:8080/ping?id=A35
+    public String ping(@RequestParam String id) {
+        sessions.put(id, Instant.now());
+        return "OK: " + id;
+    }
+
+    public static ConcurrentHashMap<String, Instant> getSessions() {
+        return sessions;
+    }
+}
