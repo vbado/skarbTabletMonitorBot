@@ -34,15 +34,14 @@ public class Application {
 
                         // якщо повідомлення ще не було
                         String formattedTime = TimeFormatter.format(lastPing);
+                        String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !";
                         if (lastSent == null) {
-                            TelegramNotifier.sendMessage("⚠️ " + tabletId +
-                                    " - Сеанс неактивний з " + formattedTime + " !");
+                            TelegramNotifier.sendMessage(text);
                             lastAlert.put(tabletId, Instant.now());
                         } else {
                             // вдень повторюємо раз на годину
                             if (!isNight && Instant.now().minusSeconds(3600).isAfter(lastSent)) {
-                                TelegramNotifier.sendMessage("⚠️ " + tabletId +
-                                        " - Сеанс неактивний з " + formattedTime + " !");
+                                TelegramNotifier.sendMessage(text);
                                 lastAlert.put(tabletId, Instant.now());
                             }
                             // вночі повторів немає
