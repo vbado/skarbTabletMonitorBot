@@ -33,8 +33,8 @@ public class Application {
                         boolean isNight = nowTime.isAfter(LocalTime.of(22, 0)) || nowTime.isBefore(LocalTime.of(8, 0));
 
                         // якщо повідомлення ще не було
+                        String formattedTime = TimeFormatter.format(lastPing);
                         if (lastSent == null) {
-                            String formattedTime = TimeFormatter.format(lastPing);
                             TelegramNotifier.sendMessage("⚠️ " + tabletId +
                                     " - Сеанс неактивний з " + formattedTime + " !");
                             lastAlert.put(tabletId, Instant.now());
@@ -42,7 +42,7 @@ public class Application {
                             // вдень повторюємо раз на годину
                             if (!isNight && Instant.now().minusSeconds(3600).isAfter(lastSent)) {
                                 TelegramNotifier.sendMessage("⚠️ " + tabletId +
-                                        " - Сеанс неактивний з " + lastPing + " !");
+                                        " - Сеанс неактивний з " + formattedTime + " !");
                                 lastAlert.put(tabletId, Instant.now());
                             }
                             // вночі повторів немає
