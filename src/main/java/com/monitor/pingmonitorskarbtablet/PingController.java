@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PingController {
     private static final ConcurrentHashMap<String, Instant> sessions = new ConcurrentHashMap<>();
 
-    @GetMapping("/ping") //http://localhost:8989/ping?id=A35
+    @GetMapping("/ping") //http://localhost:8989/ping?id=A35 https://skarbtabletmonitorbot-v3.onrender.com/ping?id=test
     public String ping(@RequestParam String id) {
         sessions.put(id, Instant.now());
         return "OK: " + id;

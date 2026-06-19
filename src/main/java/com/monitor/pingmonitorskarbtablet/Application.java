@@ -32,7 +32,7 @@ public class Application {
                     boolean isNight = nowTime.isAfter(LocalTime.of(22, 0)) || nowTime.isBefore(LocalTime.of(8, 0));
 
                     String formattedTime = TimeFormatter.format(lastPing);
-                    String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !";
+                    String text = "⚠️ " + tabletId + " - Сеанс неактивний вже з " + formattedTime + " !";
 
                     if (lastSent == null) {
                         TelegramNotifier.sendMessage(text);
