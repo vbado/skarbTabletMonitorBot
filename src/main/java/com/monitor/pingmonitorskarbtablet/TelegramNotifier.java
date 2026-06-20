@@ -25,7 +25,7 @@ public class TelegramNotifier {
             if (conn.getResponseCode() != 200) {
                 System.out.println("Error: " + conn.getResponseCode() + " " + conn.getResponseMessage());
             } else {
-                System.out.println("Message sent successfully!");
+                System.out.println("Message sent successfully! - " + text);
             }
         } catch (Exception e) {
             e.printStackTrace();
