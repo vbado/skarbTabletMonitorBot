@@ -34,7 +34,7 @@ public class Application {
                                   || nowTime.isBefore(LocalTime.of(8, 0));
 
                     String formattedTime = TimeFormatter.format(lastPing);
-                    String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !!";
+                    String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !!!";
 
                     if (lastSent == null) {
                         TelegramNotifier.sendMessage(text);
