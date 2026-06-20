@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.time.Instant;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -28,11 +29,12 @@ public class Application {
                 if (Instant.now().minusSeconds(150).isAfter(lastPing)) {
                     Instant lastSent = lastAlert.get(tabletId);
 
-                    LocalTime nowTime = LocalTime.now();
-                    boolean isNight = nowTime.isAfter(LocalTime.of(22, 0)) || nowTime.isBefore(LocalTime.of(8, 0));
+                    LocalTime nowTime = LocalTime.now(ZoneId.of("Europe/Kiev"));
+                    boolean isNight = nowTime.isAfter(LocalTime.of(22, 0))
+                                  || nowTime.isBefore(LocalTime.of(8, 0));
 
                     String formattedTime = TimeFormatter.format(lastPing);
-                    String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !";
+                    String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !!";
 
                     if (lastSent == null) {
                         TelegramNotifier.sendMessage(text);
