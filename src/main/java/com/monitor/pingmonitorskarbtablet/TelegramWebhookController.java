@@ -69,7 +69,14 @@ public class TelegramWebhookController {
         try {
             HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
             conn.setRequestMethod("GET");
-            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+            BufferedReader in;
+            if (conn.getResponseCode() >= 200 && conn.getResponseCode() < 300) {
+                in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            } else {
+                in = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
+            }
+
             StringBuilder response = new StringBuilder();
             String line;
             while ((line = in.readLine()) != null) {
@@ -81,5 +88,6 @@ public class TelegramWebhookController {
             return "Помилка: " + e.getMessage();
         }
     }
+
 }
 
