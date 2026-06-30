@@ -32,5 +32,42 @@ public class TelegramNotifier {
         }
     }
 
+    public static void sendMenu() {
+        try {
+            String urlStr = "https://api.telegram.org/bot" + TOKEN + "/sendMessage";
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setRequestProperty("Content-Type", "application/json");
+
+            // JSON з кнопками
+            String json = "{"
+                    + "\"chat_id\":\"" + CHAT_ID + "\","
+                    + "\"text\":\"Оберіть дію:\","
+                    + "\"reply_markup\":{"
+                    + "  \"inline_keyboard\":[["
+                    + "    {\"text\":\"📊 Статус\",\"callback_data\":\"STATUS\"},"
+                    + "    {\"text\":\"🗑 Видалити\",\"callback_data\":\"DELETE\"},"
+                    + "    {\"text\":\"📡 Пінг\",\"callback_data\":\"PING\"}"
+                    + "  ]]"
+                    + "}"
+                    + "}";
+
+            try (OutputStream os = conn.getOutputStream()) {
+                os.write(json.getBytes("UTF-8"));
+            }
+
+            if (conn.getResponseCode() != 200) {
+                System.out.println("Error: " + conn.getResponseCode() + " " + conn.getResponseMessage());
+            } else {
+                System.out.println("Menu sent successfully!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
 }
 

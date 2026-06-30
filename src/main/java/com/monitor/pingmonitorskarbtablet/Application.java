@@ -21,6 +21,8 @@ public class Application {
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
 
+        TelegramNotifier.sendMenu();
+
         ZoneId zone = ZoneId.of("Europe/Kiev");
 
         ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
