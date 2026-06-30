@@ -15,7 +15,7 @@ public class TelegramWebhookController {
     @PostMapping("/telegram")
     public void handleUpdate(@RequestBody String updateJson) {
 
-        System.out.println("updateJson " + updateJson);
+       // System.out.println("updateJson " + updateJson);
 
         try {
             ObjectMapper mapper = new ObjectMapper();
@@ -27,7 +27,7 @@ public class TelegramWebhookController {
                 String data = callback.get("data").asText();
                 String chatId = callback.get("message").get("chat").get("id").asText();
 
-                System.out.println("data " + data);
+                //System.out.println("data " + data);
 
                 if ("STATUS".equals(data)) {
                     // виклик твого /status
@@ -35,15 +35,20 @@ public class TelegramWebhookController {
                     String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/status");
                     TelegramNotifier.sendMessage("📊 Статус:\n" + status);
 
-                    System.out.println("STATUS " + status);
+                    //System.out.println("STATUS " + status);
 
 
                 } else if ("DELETE".equals(data)) {
                     TelegramNotifier.sendMessage("🗑 Введи ID для видалення...");
                     // тут можна зробити виклик /delete?id=...
+                    String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/delete?id=");
+                    TelegramNotifier.sendMessage(status);
+
                 } else if ("PING".equals(data)) {
                     TelegramNotifier.sendMessage("📡 Введи ID для пінгу...");
                     // тут можна зробити виклик /ping?id=...
+                    String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/ping?id=");
+                    TelegramNotifier.sendMessage(status);
                 }
             }
         } catch (Exception e) {
