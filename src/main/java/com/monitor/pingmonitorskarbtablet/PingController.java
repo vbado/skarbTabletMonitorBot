@@ -19,7 +19,7 @@ public class PingController {
         return "OK: " + id;
     }
 
-    @DeleteMapping("/delete")
+    @GetMapping("/delete") //https://skarbtabletmonitorbot-v3.onrender.com/delete?id=test
     public String delete(@RequestParam String id) {
         Instant removed = sessions.remove(id);
         if (removed != null) {
