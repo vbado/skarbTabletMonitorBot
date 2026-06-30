@@ -4,6 +4,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -15,6 +19,17 @@ public class PingController {
         sessions.put(id, Instant.now());
         return "OK: " + id;
     }
+
+    @GetMapping("/status")
+    public Map<String, String> status() {
+
+        Map<String, String> result = new HashMap<>();
+        for (Map.Entry<String, Instant> entry : sessions.entrySet()) {
+            result.put(entry.getKey(), TimeFormatter.format(entry.getValue()));
+        }
+        return result;
+    }
+
 
     public static ConcurrentHashMap<String, Instant> getSessions() {
         return sessions;
