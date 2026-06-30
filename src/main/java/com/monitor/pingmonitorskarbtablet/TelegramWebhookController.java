@@ -14,6 +14,9 @@ public class TelegramWebhookController {
 
     @PostMapping("/telegram")
     public void handleUpdate(@RequestBody String updateJson) {
+
+        System.out.println("updateJson " + updateJson);
+
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(updateJson);
