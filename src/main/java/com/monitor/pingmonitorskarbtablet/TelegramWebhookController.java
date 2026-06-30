@@ -12,45 +12,54 @@ import java.net.URL;
 @RestController
 public class TelegramWebhookController {
 
+    // простий стан: що очікує бот від користувача
+    private String expectedAction = null;
+
     @PostMapping("/telegram")
     public void handleUpdate(@RequestBody String updateJson) {
-
-       // System.out.println("updateJson " + updateJson);
-
         try {
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(updateJson);
 
-            // перевіряємо чи є callback_query
+            // якщо натиснули кнопку
             if (root.has("callback_query")) {
                 JsonNode callback = root.get("callback_query");
                 String data = callback.get("data").asText();
                 String chatId = callback.get("message").get("chat").get("id").asText();
 
-                //System.out.println("data " + data);
-
                 if ("STATUS".equals(data)) {
-                    // виклик твого /status
-
                     String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/status");
                     TelegramNotifier.sendMessage("📊 Статус:\n" + status);
-
-                    //System.out.println("STATUS " + status);
-
+                    expectedAction = null; // нічого не очікуємо
 
                 } else if ("DELETE".equals(data)) {
                     TelegramNotifier.sendMessage("🗑 Введи ID для видалення...");
-                    // тут можна зробити виклик /delete?id=...
-                    String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/delete?id=");
-                    TelegramNotifier.sendMessage(status);
+                    expectedAction = "DELETE";
 
                 } else if ("PING".equals(data)) {
                     TelegramNotifier.sendMessage("📡 Введи ID для пінгу...");
-                    // тут можна зробити виклик /ping?id=...
-                    String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/ping?id=");
-                    TelegramNotifier.sendMessage(status);
+                    expectedAction = "PING";
                 }
             }
+
+            // якщо користувач ввів текст
+            if (root.has("message")) {
+                JsonNode msg = root.get("message");
+                String text = msg.get("text").asText();
+                String chatId = msg.get("chat").get("id").asText();
+
+                if ("DELETE".equals(expectedAction)) {
+                    String result = callApi("https://skarbtabletmonitorbot-v3.onrender.com/delete?id=" + text);
+                    TelegramNotifier.sendMessage("Результат видалення: " + result);
+                    expectedAction = null;
+
+                } else if ("PING".equals(expectedAction)) {
+                    String result = callApi("https://skarbtabletmonitorbot-v3.onrender.com/ping?id=" + text);
+                    TelegramNotifier.sendMessage("Результат пінгу: " + result);
+                    expectedAction = null;
+                }
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -73,3 +82,4 @@ public class TelegramWebhookController {
         }
     }
 }
+
