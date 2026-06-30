@@ -24,10 +24,16 @@ public class TelegramWebhookController {
                 String data = callback.get("data").asText();
                 String chatId = callback.get("message").get("chat").get("id").asText();
 
+                System.out.println("data " + data);
+
                 if ("STATUS".equals(data)) {
                     // виклик твого /status
+
                     String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/status");
                     TelegramNotifier.sendMessage("📊 Статус:\n" + status);
+
+                    System.out.println("STATUS " + status);
+
 
                 } else if ("DELETE".equals(data)) {
                     TelegramNotifier.sendMessage("🗑 Введи ID для видалення...");
