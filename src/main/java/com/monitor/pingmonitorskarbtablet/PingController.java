@@ -1,5 +1,6 @@
 package com.monitor.pingmonitorskarbtablet;
 
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +19,16 @@ public class PingController {
     public String ping(@RequestParam String id) {
         sessions.put(id, Instant.now());
         return "OK: " + id;
+    }
+
+    @DeleteMapping("/delete")
+    public String delete(@RequestParam String id) {
+        Instant removed = sessions.remove(id);
+        if (removed != null) {
+            return "Deleted: " + id;
+        } else {
+            return "Not found: " + id;
+        }
     }
 
     @GetMapping("/status")
