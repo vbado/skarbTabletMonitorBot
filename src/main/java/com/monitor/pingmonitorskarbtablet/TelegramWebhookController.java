@@ -29,7 +29,7 @@ public class TelegramWebhookController {
 
                 if ("STATUS".equals(data)) {
                     String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/status");
-                    TelegramNotifier.sendMessage("📊 Статус1:\n" + status);
+                    TelegramNotifier.sendMessage("📊 Статус:\n" + status);
                     expectedAction = null; // нічого не очікуємо
 
                 } else if ("DELETE".equals(data)) {
