@@ -7,8 +7,6 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Instant;
-import java.util.Map;
-import java.util.StringJoiner;
 
 @RestController
 public class TelegramWebhookController {
@@ -43,7 +41,7 @@ public class TelegramWebhookController {
         }
 
         if ("STATUS".equals(data)) {
-            TelegramNotifier.sendMessage("📊 Статус:\n" + formatStatus());
+            TelegramNotifier.sendMessage("📊 Статус:\n" + PingController.formatStatus());
             expectedAction = null;
         } else if (data.startsWith("DELETE:")) {
             deleteSession(data.substring("DELETE:".length()));
@@ -88,18 +86,6 @@ public class TelegramWebhookController {
         PingController.getSessions().put(id, Instant.now());
         Application.clearLastAlert(id);
         TelegramNotifier.sendMessage("OK: " + id);
-    }
-
-    private String formatStatus() {
-        var sessions = PingController.getSessions();
-        if (sessions.isEmpty()) {
-            return "Немає активних сеансів";
-        }
-        StringJoiner joiner = new StringJoiner("\n");
-        for (Map.Entry<String, Instant> entry : sessions.entrySet()) {
-            joiner.add(entry.getKey() + ": " + TimeFormatter.format(entry.getValue()));
-        }
-        return joiner.toString();
     }
 
     private static String text(JsonNode node, String field) {

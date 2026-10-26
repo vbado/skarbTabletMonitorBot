@@ -4,6 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -17,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 public class Application {
 
     private static final ConcurrentHashMap<String, Instant> lastAlert = new ConcurrentHashMap<>();
+    private static volatile LocalDate lastDailyStatusDate = null;
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -31,6 +33,8 @@ public class Application {
         scheduler.scheduleAtFixedRate(TelegramNotifier::setWebhook, 10, 10, TimeUnit.MINUTES);
         scheduler.scheduleAtFixedRate(() -> {
             LocalDateTime now = LocalDateTime.now(zone);
+
+            sendDailyStatusIfNeeded(now);
 
             for (Map.Entry<String, Instant> entry : PingController.getSessions().entrySet()) {
                 String tabletId = entry.getKey();
@@ -65,5 +69,17 @@ public class Application {
 
     public static void clearLastAlert(String tabletId) {
         lastAlert.remove(tabletId);
+    }
+
+    private static void sendDailyStatusIfNeeded(LocalDateTime now) {
+        if (now.toLocalTime().isBefore(LocalTime.of(8, 0))) {
+            return;
+        }
+        LocalDate today = now.toLocalDate();
+        if (today.equals(lastDailyStatusDate)) {
+            return;
+        }
+        lastDailyStatusDate = today;
+        TelegramNotifier.sendMessage("📊 Ранковий статус:\n" + PingController.formatStatus());
     }
 }
