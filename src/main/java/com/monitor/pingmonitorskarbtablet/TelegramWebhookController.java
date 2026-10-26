@@ -1,93 +1,112 @@
 package com.monitor.pingmonitorskarbtablet;
 
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.time.Instant;
+import java.util.Map;
+import java.util.StringJoiner;
 
 @RestController
 public class TelegramWebhookController {
 
-    // простий стан: що очікує бот від користувача
-    private String expectedAction = null;
+    private volatile String expectedAction = null;
 
     @PostMapping("/telegram")
     public void handleUpdate(@RequestBody String updateJson) {
         try {
-            ObjectMapper mapper = new ObjectMapper();
+            JsonMapper mapper = JsonMapper.builder().build();
             JsonNode root = mapper.readTree(updateJson);
 
-            // якщо натиснули кнопку
             if (root.has("callback_query")) {
-                JsonNode callback = root.get("callback_query");
-                String data = callback.get("data").asText();
-                String chatId = callback.get("message").get("chat").get("id").asText();
-
-                if ("STATUS".equals(data)) {
-                    String status = callApi("https://skarbtabletmonitorbot-v3.onrender.com/status");
-                    TelegramNotifier.sendMessage("📊 Статус:\n" + status);
-                    expectedAction = null; // нічого не очікуємо
-
-                } else if ("DELETE".equals(data)) {
-                    TelegramNotifier.sendMessage("🗑 Введи ID для видалення...");
-                    expectedAction = "DELETE";
-
-                } else if ("PING".equals(data)) {
-                    TelegramNotifier.sendMessage("📡 Введи ID для пінгу...");
-                    expectedAction = "PING";
-                }
+                handleCallback(root.get("callback_query"));
             }
 
-            // якщо користувач ввів текст
             if (root.has("message")) {
-                JsonNode msg = root.get("message");
-                String text = msg.get("text").asText();
-                String chatId = msg.get("chat").get("id").asText();
-
-                if ("DELETE".equals(expectedAction)) {
-                    String result = callApi("https://skarbtabletmonitorbot-v3.onrender.com/delete?id=" + text);
-                    TelegramNotifier.sendMessage("Результат видалення: " + result);
-                    expectedAction = null;
-
-                } else if ("PING".equals(expectedAction)) {
-                    String result = callApi("https://skarbtabletmonitorbot-v3.onrender.com/ping?id=" + text);
-                    TelegramNotifier.sendMessage("Результат пінгу: " + result);
-                    expectedAction = null;
-                }
+                handleMessage(root.get("message"));
             }
-
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private String callApi(String urlStr) {
-        try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
-            conn.setRequestMethod("GET");
+    private void handleCallback(JsonNode callback) {
+        String data = text(callback, "data");
+        String callbackId = text(callback, "id");
+        TelegramNotifier.answerCallbackQuery(callbackId);
 
-            BufferedReader in;
-            if (conn.getResponseCode() >= 200 && conn.getResponseCode() < 300) {
-                in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-            } else {
-                in = new BufferedReader(new InputStreamReader(conn.getErrorStream()));
-            }
+        if (data == null) {
+            return;
+        }
 
-            StringBuilder response = new StringBuilder();
-            String line;
-            while ((line = in.readLine()) != null) {
-                response.append(line);
-            }
-            in.close();
-            return response.toString();
-        } catch (Exception e) {
-            return "Помилка: " + e.getMessage();
+        if ("STATUS".equals(data)) {
+            TelegramNotifier.sendMessage("📊 Статус:\n" + formatStatus());
+            expectedAction = null;
+        } else if (data.startsWith("DELETE:")) {
+            deleteSession(data.substring("DELETE:".length()));
+            expectedAction = null;
+        } else if ("DELETE".equals(data)) {
+            TelegramNotifier.sendMessage("🗑 Введи ID для видалення...");
+            expectedAction = "DELETE";
+        } else if (data.startsWith("PING:")) {
+            pingSession(data.substring("PING:".length()));
+            expectedAction = null;
+        } else if ("PING".equals(data)) {
+            TelegramNotifier.sendMessage("📡 Введи ID для пінгу...");
+            expectedAction = "PING";
         }
     }
 
-}
+    private void handleMessage(JsonNode msg) {
+        String text = text(msg, "text");
+        if (text == null || expectedAction == null) {
+            return;
+        }
 
+        if ("DELETE".equals(expectedAction)) {
+            deleteSession(text.trim());
+        } else if ("PING".equals(expectedAction)) {
+            pingSession(text.trim());
+        }
+        expectedAction = null;
+    }
+
+    private void deleteSession(String id) {
+        Instant removed = PingController.getSessions().remove(id);
+        Application.clearLastAlert(id);
+        if (removed != null) {
+            TelegramNotifier.sendMessage("Видалено: " + id);
+        } else {
+            TelegramNotifier.sendMessage("Не знайдено: " + id);
+        }
+    }
+
+    private void pingSession(String id) {
+        PingController.getSessions().put(id, Instant.now());
+        Application.clearLastAlert(id);
+        TelegramNotifier.sendMessage("OK: " + id);
+    }
+
+    private String formatStatus() {
+        var sessions = PingController.getSessions();
+        if (sessions.isEmpty()) {
+            return "Немає активних сеансів";
+        }
+        StringJoiner joiner = new StringJoiner("\n");
+        for (Map.Entry<String, Instant> entry : sessions.entrySet()) {
+            joiner.add(entry.getKey() + ": " + TimeFormatter.format(entry.getValue()));
+        }
+        return joiner.toString();
+    }
+
+    private static String text(JsonNode node, String field) {
+        if (node == null || !node.has(field) || node.get(field).isNull()) {
+            return null;
+        }
+        String value = node.get(field).asString();
+        return value == null || value.isBlank() ? null : value;
+    }
+}

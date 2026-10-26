@@ -21,11 +21,14 @@ public class Application {
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
 
+        TelegramNotifier.setWebhook();
         TelegramNotifier.sendMenu();
 
         ZoneId zone = ZoneId.of("Europe/Kiev");
 
-        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
+        // Telegram знімає вебхук, якщо хтось викликає getUpdates з цим токеном
+        scheduler.scheduleAtFixedRate(TelegramNotifier::setWebhook, 10, 10, TimeUnit.MINUTES);
         scheduler.scheduleAtFixedRate(() -> {
             LocalDateTime now = LocalDateTime.now(zone);
 
@@ -45,13 +48,13 @@ public class Application {
                     String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !";
 
                     if (lastSent == null) {
-                        TelegramNotifier.sendMessage(text);
+                        TelegramNotifier.sendInactiveAlert(text, tabletId);
                         lastAlert.put(tabletId, Instant.now());
                     } else {
                         // повторні повідомлення тільки вдень, раз на годину
                         LocalDateTime lastSentTime = LocalDateTime.ofInstant(lastSent, zone);
                         if (!isNight && now.minusSeconds(3600).isAfter(lastSentTime)) {
-                            TelegramNotifier.sendMessage(text);
+                            TelegramNotifier.sendInactiveAlert(text, tabletId);
                             lastAlert.put(tabletId, Instant.now());
                         }
                     }
@@ -60,5 +63,7 @@ public class Application {
         }, 0, 60, TimeUnit.SECONDS);
     }
 
-
+    public static void clearLastAlert(String tabletId) {
+        lastAlert.remove(tabletId);
+    }
 }
