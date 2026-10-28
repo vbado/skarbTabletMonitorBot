@@ -1,5 +1,7 @@
 package com.monitor.pingmonitorskarbtablet;
 
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,9 +21,10 @@ public class PingController {
     private static final ConcurrentHashMap<String, String> tabletIps = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Instant> pendingRefresh = new ConcurrentHashMap<>();
 
-    @GetMapping("/ping") //https://skarbtabletmonitorbot-v3.onrender.com/ping?id=A35&ip=192.168.0.15
-    public String ping(@RequestParam String id,
-                       @RequestParam(required = false) String ip) {
+    @GetMapping(value = "/ping", produces = MediaType.TEXT_PLAIN_VALUE)
+    //https://skarbtabletmonitorbot-v3.onrender.com/ping?id=A35&ip=192.168.0.15
+    public ResponseEntity<String> ping(@RequestParam String id,
+                                       @RequestParam(required = false) String ip) {
         sessions.put(id, Instant.now());
         String safeIp = ipv4OrNull(ip);
         if (safeIp != null) {
@@ -29,13 +32,14 @@ public class PingController {
         }
         if (pendingRefresh.remove(id) != null) {
             TelegramNotifier.sendMessage("🔄 " + id + " виконує перезапуск");
-            return "REFRESH";
+            return ResponseEntity.ok()
+                    .header("X-Tablet-Refresh", "1")
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body("REFRESH");
         }
         String storedIp = tabletIps.get(id);
-        if (storedIp == null) {
-            return "OK: " + id;
-        }
-        return "OK: " + id + " " + storedIp;
+        String body = storedIp == null ? "OK: " + id : "OK: " + id + " " + storedIp;
+        return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(body);
     }
 
     @GetMapping("/delete") //https://skarbtabletmonitorbot-v3.onrender.com/delete?id=test
