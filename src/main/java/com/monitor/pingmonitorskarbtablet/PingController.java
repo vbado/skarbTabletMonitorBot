@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,10 +46,14 @@ public class PingController {
     }
 
     @GetMapping("/status")
-    public Map<String, String> status() {
-        Map<String, String> result = new HashMap<>();
+    public Map<String, Map<String, String>> status() {
+        Map<String, Map<String, String>> result = new LinkedHashMap<>();
         for (Map.Entry<String, Instant> entry : sessions.entrySet()) {
-            result.put(entry.getKey(), describe(entry.getKey(), entry.getValue()));
+            Map<String, String> info = new LinkedHashMap<>();
+            info.put("lastSeen", TimeFormatter.format(entry.getValue()));
+            String ip = tabletIps.get(entry.getKey());
+            info.put("ip", ip != null ? ip : "невідомий");
+            result.put(entry.getKey(), info);
         }
         return result;
     }
