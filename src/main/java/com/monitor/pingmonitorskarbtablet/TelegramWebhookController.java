@@ -55,6 +55,13 @@ public class TelegramWebhookController {
         } else if ("PING".equals(data)) {
             TelegramNotifier.sendMessage("📡 Введи ID для пінгу...");
             expectedAction = "PING";
+        } else if (data.startsWith("REFRESH:")) {
+            expectedAction = null;
+            String id = data.substring("REFRESH:".length());
+            new Thread(() -> refreshSession(id), "tablet-refresh").start();
+        } else if ("REFRESH".equals(data)) {
+            TelegramNotifier.sendMessage("🔄 Введи ID для перезапуску...");
+            expectedAction = "REFRESH";
         }
     }
 
@@ -68,6 +75,8 @@ public class TelegramWebhookController {
             deleteSession(text.trim());
         } else if ("PING".equals(expectedAction)) {
             pingSession(text.trim());
+        } else if ("REFRESH".equals(expectedAction)) {
+            new Thread(() -> refreshSession(text.trim()), "tablet-refresh").start();
         }
         expectedAction = null;
     }
@@ -86,6 +95,21 @@ public class TelegramWebhookController {
         PingController.getSessions().put(id, Instant.now());
         Application.clearLastAlert(id);
         TelegramNotifier.sendMessage("OK: " + id);
+    }
+
+    private void refreshSession(String id) {
+        String ip = PingController.getIp(id);
+        if (ip == null) {
+            TelegramNotifier.sendMessage("Немає IP для " + id
+                    + ". Планшет має пінгувати з &ip=");
+            return;
+        }
+        boolean ok = TabletRefresher.refresh(ip);
+        if (ok) {
+            TelegramNotifier.sendMessage("🔄 Перезапуск " + id + " (" + ip + "): OK");
+        } else {
+            TelegramNotifier.sendMessage("🔄 Перезапуск " + id + " (" + ip + "): не вдалось");
+        }
     }
 
     private static String text(JsonNode node, String field) {
