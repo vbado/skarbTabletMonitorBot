@@ -58,7 +58,8 @@ public class TelegramNotifier {
                     + "  \"inline_keyboard\":[["
                     + "    {\"text\":\"🗑 Видалити\",\"callback_data\":\"DELETE:" + escapeJson(tabletId) + "\"},"
                     + "    {\"text\":\"📊 Статус\",\"callback_data\":\"STATUS\"},"
-                    + "    {\"text\":\"🔄 Перезапуск\",\"callback_data\":\"REFRESH:" + escapeJson(tabletId) + "\"}"
+                    + "    {\"text\":\"🔄 Перезапуск\",\"callback_data\":\"REFRESH:" + escapeJson(tabletId) + "\"},"
+                    + "    {\"text\":\"🌐 Отримати IP\",\"callback_data\":\"IP:" + escapeJson(tabletId) + "\"}"
                     + "  ]]"
                 + "}"
                 + "}";
@@ -75,7 +76,8 @@ public class TelegramNotifier {
                     + "    {\"text\":\"🗑 Видалити\",\"callback_data\":\"DELETE\"},"
                     + "    {\"text\":\"📡 Пінг\",\"callback_data\":\"PING\"}"
                     + "  ],["
-                    + "    {\"text\":\"🔄 Перезапуск\",\"callback_data\":\"REFRESH\"}"
+                    + "    {\"text\":\"🔄 Перезапуск\",\"callback_data\":\"REFRESH\"},"
+                    + "    {\"text\":\"🌐 Отримати IP\",\"callback_data\":\"IP\"}"
                     + "  ]]"
                 + "}"
                 + "}";
