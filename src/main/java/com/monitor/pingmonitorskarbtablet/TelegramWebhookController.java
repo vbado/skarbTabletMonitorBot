@@ -98,18 +98,12 @@ public class TelegramWebhookController {
     }
 
     private void refreshSession(String id) {
-        String ip = PingController.getIp(id);
-        if (ip == null) {
-            TelegramNotifier.sendMessage("Немає IP для " + id
-                    + ". Планшет має пінгувати з &ip=");
+        if (!PingController.requestRefresh(id)) {
+            TelegramNotifier.sendMessage("Не знайдено: " + id);
             return;
         }
-        boolean ok = TabletRefresher.refresh(ip);
-        if (ok) {
-            TelegramNotifier.sendMessage("🔄 Перезапуск " + id + " (" + ip + "): OK");
-        } else {
-            TelegramNotifier.sendMessage("🔄 Перезапуск " + id + " (" + ip + "): не вдалось");
-        }
+        TelegramNotifier.sendMessage("🔄 Перезапуск " + id
+                + " у черзі. Планшет виконає на наступному пінгу.");
     }
 
     private static String text(JsonNode node, String field) {

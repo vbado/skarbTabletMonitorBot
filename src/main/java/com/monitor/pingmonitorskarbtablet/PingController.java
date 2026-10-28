@@ -17,6 +17,7 @@ public class PingController {
             "^(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)$");
     private static final ConcurrentHashMap<String, Instant> sessions = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, String> tabletIps = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Instant> pendingRefresh = new ConcurrentHashMap<>();
 
     @GetMapping("/ping") //https://skarbtabletmonitorbot-v3.onrender.com/ping?id=A35&ip=192.168.0.15
     public String ping(@RequestParam String id,
@@ -25,6 +26,10 @@ public class PingController {
         String safeIp = ipv4OrNull(ip);
         if (safeIp != null) {
             tabletIps.put(id, safeIp);
+        }
+        if (pendingRefresh.remove(id) != null) {
+            TelegramNotifier.sendMessage("🔄 " + id + " виконує перезапуск");
+            return "REFRESH";
         }
         String storedIp = tabletIps.get(id);
         if (storedIp == null) {
@@ -37,6 +42,7 @@ public class PingController {
     public String delete(@RequestParam String id) {
         Instant removed = sessions.remove(id);
         tabletIps.remove(id);
+        pendingRefresh.remove(id);
         Application.clearLastAlert(id);
         if (removed != null) {
             return "Deleted: " + id;
@@ -47,12 +53,10 @@ public class PingController {
 
     @GetMapping("/refresh") //https://skarbtabletmonitorbot-v3.onrender.com/refresh?id=A35
     public String refresh(@RequestParam String id) {
-        String ip = tabletIps.get(id);
-        if (ip == null) {
-            return "No IP: " + id;
+        if (!requestRefresh(id)) {
+            return "Not found: " + id;
         }
-        boolean ok = TabletRefresher.refresh(ip);
-        return (ok ? "Refreshed: " : "Failed: ") + id + " " + ip;
+        return "Queued: " + id;
     }
 
     @GetMapping("/status")
@@ -89,7 +93,16 @@ public class PingController {
 
     public static Instant forget(String id) {
         tabletIps.remove(id);
+        pendingRefresh.remove(id);
         return sessions.remove(id);
+    }
+
+    public static boolean requestRefresh(String id) {
+        if (!sessions.containsKey(id)) {
+            return false;
+        }
+        pendingRefresh.put(id, Instant.now());
+        return true;
     }
 
     private static String describe(String id, Instant seenAt) {

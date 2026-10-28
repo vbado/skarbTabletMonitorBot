@@ -70,7 +70,7 @@ public class Application {
     }
 
     private static void notifyInactive(String tabletId, String text) {
-        TabletRefresher.refresh(PingController.getIp(tabletId));
+        PingController.requestRefresh(tabletId);
         TelegramNotifier.sendInactiveAlert(text, tabletId);
         lastAlert.put(tabletId, Instant.now());
     }
