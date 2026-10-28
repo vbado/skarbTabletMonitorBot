@@ -62,6 +62,12 @@ public class TelegramWebhookController {
         } else if ("REFRESH".equals(data)) {
             TelegramNotifier.sendMessage("🔄 Введи ID для перезапуску...");
             expectedAction = "REFRESH";
+        } else if (data.startsWith("IP:")) {
+            sendIps(data.substring("IP:".length()));
+            expectedAction = null;
+        } else if ("IP".equals(data)) {
+            TelegramNotifier.sendMessage("🌐 Введи ID планшета...");
+            expectedAction = "IP";
         }
     }
 
@@ -77,6 +83,8 @@ public class TelegramWebhookController {
             pingSession(text.trim());
         } else if ("REFRESH".equals(expectedAction)) {
             new Thread(() -> refreshSession(text.trim()), "tablet-refresh").start();
+        } else if ("IP".equals(expectedAction)) {
+            sendIps(text.trim());
         }
         expectedAction = null;
     }
@@ -95,6 +103,10 @@ public class TelegramWebhookController {
         PingController.getSessions().put(id, Instant.now());
         Application.clearLastAlert(id);
         TelegramNotifier.sendMessage("OK: " + id);
+    }
+
+    private void sendIps(String id) {
+        TelegramNotifier.sendMessage("🌐 IP " + PingController.formatIps(id));
     }
 
     private void refreshSession(String id) {

@@ -18,17 +18,24 @@ public class PingController {
     private static final Pattern IPV4 = Pattern.compile(
             "^(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)$");
     private static final ConcurrentHashMap<String, Instant> sessions = new ConcurrentHashMap<>();
-    private static final ConcurrentHashMap<String, String> tabletIps = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, String> internalIps = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, String> externalIps = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Instant> pendingRefresh = new ConcurrentHashMap<>();
 
     @GetMapping(value = "/ping", produces = MediaType.TEXT_PLAIN_VALUE)
-    //https://skarbtabletmonitorbot-v3.onrender.com/ping?id=A35&ip=192.168.0.15
+    //https://skarbtabletmonitorbot-v3.onrender.com/ping?id=A35&ip=176.36.200.119&internalIp=192.168.0.15
     public ResponseEntity<String> ping(@RequestParam String id,
-                                       @RequestParam(required = false) String ip) {
+                                       @RequestParam(required = false) String ip,
+                                       @RequestParam(required = false) String externalIp,
+                                       @RequestParam(required = false) String internalIp) {
         sessions.put(id, Instant.now());
-        String safeIp = ipv4OrNull(ip);
-        if (safeIp != null) {
-            tabletIps.put(id, safeIp);
+        String safeExternal = ipv4OrNull(externalIp != null ? externalIp : ip);
+        if (safeExternal != null) {
+            externalIps.put(id, safeExternal);
+        }
+        String safeInternal = ipv4OrNull(internalIp);
+        if (safeInternal != null) {
+            internalIps.put(id, safeInternal);
         }
         if (pendingRefresh.remove(id) != null) {
             TelegramNotifier.sendMessage("🔄 " + id + " виконує перезапуск");
@@ -37,15 +44,20 @@ public class PingController {
                     .contentType(MediaType.TEXT_PLAIN)
                     .body("REFRESH");
         }
-        String storedIp = tabletIps.get(id);
-        String body = storedIp == null ? "OK: " + id : "OK: " + id + " " + storedIp;
+        String storedExternal = externalIps.get(id);
+        String body = storedExternal == null ? "OK: " + id : "OK: " + id + " " + storedExternal;
+        String storedInternal = internalIps.get(id);
+        if (storedInternal != null) {
+            body += " internalIp=" + storedInternal;
+        }
         return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(body);
     }
 
     @GetMapping("/delete") //https://skarbtabletmonitorbot-v3.onrender.com/delete?id=test
     public String delete(@RequestParam String id) {
         Instant removed = sessions.remove(id);
-        tabletIps.remove(id);
+        internalIps.remove(id);
+        externalIps.remove(id);
         pendingRefresh.remove(id);
         Application.clearLastAlert(id);
         if (removed != null) {
@@ -63,14 +75,27 @@ public class PingController {
         return "Queued: " + id;
     }
 
+    @GetMapping("/ip") //https://skarbtabletmonitorbot-v3.onrender.com/ip?id=A35
+    public Map<String, String> ip(@RequestParam String id) {
+        Map<String, String> result = new LinkedHashMap<>();
+        result.put("id", id);
+        result.put("externalIp", orUnknown(externalIps.get(id)));
+        result.put("internalIp", orUnknown(internalIps.get(id)));
+        Instant seen = sessions.get(id);
+        if (seen != null) {
+            result.put("lastSeen", TimeFormatter.format(seen));
+        }
+        return result;
+    }
+
     @GetMapping("/status")
     public Map<String, Map<String, String>> status() {
         Map<String, Map<String, String>> result = new LinkedHashMap<>();
         for (Map.Entry<String, Instant> entry : sessions.entrySet()) {
             Map<String, String> info = new LinkedHashMap<>();
             info.put("lastSeen", TimeFormatter.format(entry.getValue()));
-            String ip = tabletIps.get(entry.getKey());
-            info.put("ip", ip != null ? ip : "невідомий");
+            info.put("externalIp", orUnknown(externalIps.get(entry.getKey())));
+            info.put("internalIp", orUnknown(internalIps.get(entry.getKey())));
             result.put(entry.getKey(), info);
         }
         return result;
@@ -92,11 +117,26 @@ public class PingController {
     }
 
     public static String getIp(String id) {
-        return tabletIps.get(id);
+        return externalIps.get(id);
+    }
+
+    public static String getInternalIp(String id) {
+        return internalIps.get(id);
+    }
+
+    public static String getExternalIp(String id) {
+        return externalIps.get(id);
+    }
+
+    public static String formatIps(String id) {
+        return id
+                + "\nexternalIp: " + orUnknown(externalIps.get(id))
+                + "\ninternalIp: " + orUnknown(internalIps.get(id));
     }
 
     public static Instant forget(String id) {
-        tabletIps.remove(id);
+        internalIps.remove(id);
+        externalIps.remove(id);
         pendingRefresh.remove(id);
         return sessions.remove(id);
     }
@@ -110,12 +150,13 @@ public class PingController {
     }
 
     private static String describe(String id, Instant seenAt) {
-        String when = TimeFormatter.format(seenAt);
-        String ip = tabletIps.get(id);
-        if (ip == null) {
-            return when + ", IP невідомий";
-        }
-        return when + ", IP " + ip;
+        return TimeFormatter.format(seenAt)
+                + ", externalIp " + orUnknown(externalIps.get(id))
+                + ", internalIp " + orUnknown(internalIps.get(id));
+    }
+
+    private static String orUnknown(String ip) {
+        return ip == null ? "невідомий" : ip;
     }
 
     private static String ipv4OrNull(String ip) {
