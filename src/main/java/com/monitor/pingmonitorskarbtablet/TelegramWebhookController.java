@@ -73,7 +73,7 @@ public class TelegramWebhookController {
     }
 
     private void deleteSession(String id) {
-        Instant removed = PingController.getSessions().remove(id);
+        Instant removed = PingController.forget(id);
         Application.clearLastAlert(id);
         if (removed != null) {
             TelegramNotifier.sendMessage("Видалено: " + id);

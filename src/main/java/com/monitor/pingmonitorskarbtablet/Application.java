@@ -52,14 +52,12 @@ public class Application {
                     String text = "⚠️ " + tabletId + " - Сеанс неактивний з " + formattedTime + " !";
 
                     if (lastSent == null) {
-                        TelegramNotifier.sendInactiveAlert(text, tabletId);
-                        lastAlert.put(tabletId, Instant.now());
+                        notifyInactive(tabletId, text);
                     } else {
                         // повторні повідомлення тільки вдень, раз на годину
                         LocalDateTime lastSentTime = LocalDateTime.ofInstant(lastSent, zone);
                         if (!isNight && now.minusSeconds(3600).isAfter(lastSentTime)) {
-                            TelegramNotifier.sendInactiveAlert(text, tabletId);
-                            lastAlert.put(tabletId, Instant.now());
+                            notifyInactive(tabletId, text);
                         }
                     }
                 }
@@ -69,6 +67,12 @@ public class Application {
 
     public static void clearLastAlert(String tabletId) {
         lastAlert.remove(tabletId);
+    }
+
+    private static void notifyInactive(String tabletId, String text) {
+        TabletRefresher.refresh(PingController.getIp(tabletId));
+        TelegramNotifier.sendInactiveAlert(text, tabletId);
+        lastAlert.put(tabletId, Instant.now());
     }
 
     private static void sendDailyStatusIfNeeded(LocalDateTime now) {
