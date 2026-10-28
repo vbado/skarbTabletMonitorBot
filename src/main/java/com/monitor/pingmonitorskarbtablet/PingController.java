@@ -9,20 +9,34 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 
 @RestController
 public class PingController {
+    private static final Pattern IPV4 = Pattern.compile(
+            "^(?:(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|1?\\d?\\d)$");
     private static final ConcurrentHashMap<String, Instant> sessions = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, String> tabletIps = new ConcurrentHashMap<>();
 
-    @GetMapping("/ping") //http://localhost:8989/ping?id=A35 https://skarbtabletmonitorbot-v3.onrender.com/ping?id=test
-    public String ping(@RequestParam String id) {
+    @GetMapping("/ping") //https://skarbtabletmonitorbot-v3.onrender.com/ping?id=A35&ip=192.168.0.15
+    public String ping(@RequestParam String id,
+                       @RequestParam(required = false) String ip) {
         sessions.put(id, Instant.now());
-        return "OK: " + id;
+        String safeIp = ipv4OrNull(ip);
+        if (safeIp != null) {
+            tabletIps.put(id, safeIp);
+        }
+        String storedIp = tabletIps.get(id);
+        if (storedIp == null) {
+            return "OK: " + id;
+        }
+        return "OK: " + id + " " + storedIp;
     }
 
     @GetMapping("/delete") //https://skarbtabletmonitorbot-v3.onrender.com/delete?id=test
     public String delete(@RequestParam String id) {
         Instant removed = sessions.remove(id);
+        tabletIps.remove(id);
         Application.clearLastAlert(id);
         if (removed != null) {
             return "Deleted: " + id;
@@ -35,7 +49,7 @@ public class PingController {
     public Map<String, String> status() {
         Map<String, String> result = new HashMap<>();
         for (Map.Entry<String, Instant> entry : sessions.entrySet()) {
-            result.put(entry.getKey(), TimeFormatter.format(entry.getValue()));
+            result.put(entry.getKey(), describe(entry.getKey(), entry.getValue()));
         }
         return result;
     }
@@ -50,8 +64,34 @@ public class PingController {
         }
         StringJoiner joiner = new StringJoiner("\n");
         for (Map.Entry<String, Instant> entry : sessions.entrySet()) {
-            joiner.add(entry.getKey() + ": " + TimeFormatter.format(entry.getValue()));
+            joiner.add(entry.getKey() + ": " + describe(entry.getKey(), entry.getValue()));
         }
         return joiner.toString();
+    }
+
+    public static String getIp(String id) {
+        return tabletIps.get(id);
+    }
+
+    public static Instant forget(String id) {
+        tabletIps.remove(id);
+        return sessions.remove(id);
+    }
+
+    private static String describe(String id, Instant seenAt) {
+        String when = TimeFormatter.format(seenAt);
+        String ip = tabletIps.get(id);
+        if (ip == null) {
+            return when + ", IP невідомий";
+        }
+        return when + ", IP " + ip;
+    }
+
+    private static String ipv4OrNull(String ip) {
+        if (ip == null) {
+            return null;
+        }
+        String trimmed = ip.trim();
+        return IPV4.matcher(trimmed).matches() ? trimmed : null;
     }
 }
