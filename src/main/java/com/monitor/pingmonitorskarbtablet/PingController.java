@@ -45,6 +45,16 @@ public class PingController {
         }
     }
 
+    @GetMapping("/refresh") //https://skarbtabletmonitorbot-v3.onrender.com/refresh?id=A35
+    public String refresh(@RequestParam String id) {
+        String ip = tabletIps.get(id);
+        if (ip == null) {
+            return "No IP: " + id;
+        }
+        boolean ok = TabletRefresher.refresh(ip);
+        return (ok ? "Refreshed: " : "Failed: ") + id + " " + ip;
+    }
+
     @GetMapping("/status")
     public Map<String, Map<String, String>> status() {
         Map<String, Map<String, String>> result = new LinkedHashMap<>();
