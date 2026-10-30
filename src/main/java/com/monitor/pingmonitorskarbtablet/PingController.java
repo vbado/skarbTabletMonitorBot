@@ -23,34 +23,46 @@ public class PingController {
     private static final ConcurrentHashMap<String, Instant> pendingRefresh = new ConcurrentHashMap<>();
 
     @GetMapping(value = "/ping", produces = MediaType.TEXT_PLAIN_VALUE)
-    // https://skarbtabletmonitorbot-v3.onrender.com/ping?id=A35&externalIp=176.36.200.119&internalIp=192.168.0.15
-    public ResponseEntity<String> ping(@RequestParam String id,
+    // 1С: /ping?id=A35&ip=176.x   оболонка: /ping?externalIp=176.x&internalIp=192.168.x
+    public ResponseEntity<String> ping(@RequestParam(required = false) String id,
                                        @RequestParam(required = false) String externalIp,
-                                       @RequestParam(required = false) String internalIp) {
-        sessions.put(id, Instant.now());
-        String safeExternal = ipv4OrNull(externalIp);
-        if (safeExternal != null) {
-            externalIps.put(id, safeExternal);
-        }
+                                       @RequestParam(required = false) String internalIp,
+                                       @RequestParam(required = false) String ip) {
+        String safeExternal = ipv4OrNull(first(externalIp, ip));
         String safeInternal = ipv4OrNull(internalIp);
-        if (safeInternal != null) {
-            internalIps.put(id, safeInternal);
+        String resolvedId = blankToNull(id);
+        if (resolvedId == null && safeExternal != null) {
+            resolvedId = findUniqueIdByExternalIp(safeExternal);
         }
-        if (pendingRefresh.remove(id) != null) {
-            TelegramNotifier.sendMessage("🔄 " + id + " виконує перезапуск");
+        if (resolvedId == null) {
+            return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body("OK");
+        }
+        sessions.put(resolvedId, Instant.now());
+        if (safeExternal != null) {
+            externalIps.put(resolvedId, safeExternal);
+        }
+        if (safeInternal != null) {
+            internalIps.put(resolvedId, safeInternal);
+        }
+        if (pendingRefresh.remove(resolvedId) != null) {
+            TelegramNotifier.sendMessage("🔄 " + resolvedId + " виконує перезапуск");
             return ResponseEntity.ok()
+                    .header("X-Tablet-Id", resolvedId)
                     .header("X-Tablet-Refresh", "1")
                     .contentType(MediaType.TEXT_PLAIN)
                     .body("REFRESH");
         }
-        StringBuilder body = new StringBuilder("OK: ").append(id);
+        StringBuilder body = new StringBuilder("OK: ").append(resolvedId);
         if (safeExternal != null) {
             body.append(" externalIp=").append(safeExternal);
         }
         if (safeInternal != null) {
             body.append(" internalIp=").append(safeInternal);
         }
-        return ResponseEntity.ok().contentType(MediaType.TEXT_PLAIN).body(body.toString());
+        return ResponseEntity.ok()
+                .header("X-Tablet-Id", resolvedId)
+                .contentType(MediaType.TEXT_PLAIN)
+                .body(body.toString());
     }
 
     @GetMapping("/delete") //https://skarbtabletmonitorbot-v3.onrender.com/delete?id=test
@@ -153,6 +165,28 @@ public class PingController {
         return TimeFormatter.format(seenAt)
                 + ", externalIp " + orUnknown(externalIps.get(id))
                 + ", internalIp " + orUnknown(internalIps.get(id));
+    }
+
+    private static String findUniqueIdByExternalIp(String externalIp) {
+        String found = null;
+        for (Map.Entry<String, String> entry : externalIps.entrySet()) {
+            if (!externalIp.equals(entry.getValue())) {
+                continue;
+            }
+            if (found != null) {
+                return null;
+            }
+            found = entry.getKey();
+        }
+        return found;
+    }
+
+    private static String first(String a, String b) {
+        return a != null && !a.isBlank() ? a : b;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private static String orUnknown(String ip) {
